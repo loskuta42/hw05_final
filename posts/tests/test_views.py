@@ -336,9 +336,15 @@ class CacheViewsTest(TestCase):
             text='test_new_post',
             author=CacheViewsTest.author,
         )
-        response_old = CacheViewsTest.authorized_client.get(reverse('index'))
+        response_old = CacheViewsTest.authorized_client.get(
+            reverse('index')
+        )
         old_posts = response_old.content
-        self.assertEqual(old_posts, posts, 'Не возвращает кэшированную страницу.')
+        self.assertEqual(
+            old_posts,
+            posts,
+            'Не возвращает кэшированную страницу.'
+        )
         cache.clear()
         response_new = CacheViewsTest.authorized_client.get(reverse('index'))
         new_posts = response_new.content

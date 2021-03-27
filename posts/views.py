@@ -57,10 +57,10 @@ def profile(request, username):
     follow_count = author.follower.all().count()
     followers_count = author.following.all().count()
     following = request.user.is_authenticated and \
-                Follow.objects.filter(
-                    user=request.user,
-                    author=author
-                ).exists()
+        Follow.objects.filter(
+            user=request.user,
+            author=author
+        ).exists()
     author_posts = author.posts.all()
     count = author_posts.count()
     paginator = Paginator(author_posts, settings.PER_PAGE)
