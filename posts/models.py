@@ -53,7 +53,6 @@ class Post(models.Model):
 class Comment(models.Model):
     post = models.ForeignKey(
         Post,
-        verbose_name='Комментарий',
         on_delete=models.CASCADE,
         related_name='comments'
     )
@@ -73,3 +72,16 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ('-created',)
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        related_name='follower',
+        on_delete=models.CASCADE,
+    )
+    author = models.ForeignKey(
+        User,
+        related_name='following',
+        on_delete=models.CASCADE,
+    )

@@ -2,14 +2,14 @@ import shutil
 import tempfile
 
 from django import forms
-from django.contrib.auth import get_user_model
 from django.conf import settings
-from django.test import Client, TestCase
-from django.urls import reverse
-from django.core.files.uploadedfile import SimpleUploadedFile
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
 
-from posts.models import Group, Post
+from posts.models import Follow, Group, Post
 
 User = get_user_model()
 
@@ -343,3 +343,215 @@ class CacheViewsTest(TestCase):
         response_new = CacheViewsTest.authorized_client.get(reverse('index'))
         new_posts = response_new.content
         self.assertNotEqual(old_posts, new_posts, 'Нет сброса кэша.')
+
+
+class FollowViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.guest_client = Client()
+        cls.author = User.objects.create_user(
+            username='test_author'
+        )
+        cls.auth_author_client = Client()
+        cls.auth_author_client.force_login(cls.author)
+
+        cls.user_fol = User.objects.create_user(
+            username='test_user_fol'
+        )
+        cls.authorized_user_fol_client = Client()
+        cls.authorized_user_fol_client.force_login(
+            cls.user_fol
+        )
+
+        cls.user_unfol = User.objects.create_user(
+            username='test_user_unfol'
+        )
+        cls.authorized_user_unfol_client = Client()
+        cls.authorized_user_unfol_client.force_login(
+            cls.user_unfol
+        )
+        cls.group = Group.objects.create(
+            title='test_group',
+            slug='test-slug',
+            description='test_description'
+        )
+        cls.post = Post.objects.create(
+            text='test_post',
+            group=cls.group,
+            author=cls.author
+        )
+
+    def test_follow_unfollow(self):
+        """Тест работы подписки и отписки от автора."""
+        FollowViewsTest.authorized_user_unfol_client.get(
+            reverse(
+                'profile_follow',
+                args=[FollowViewsTest.author.username]
+            )
+        )
+        followers_old = User.objects.filter(
+            username=FollowViewsTest.user_unfol.username
+        ).values_list('follower', flat=True)
+        self.assertIn(
+            FollowViewsTest.author.pk,
+            followers_old,
+            'Не работает подписка на автора'
+        )
+        FollowViewsTest.authorized_user_unfol_client.get(
+            reverse(
+                'profile_unfollow',
+                args=[FollowViewsTest.author.username]
+            ),
+
+        )
+        followers_new = User.objects.filter(
+            username=FollowViewsTest.user_unfol.username
+        ).values_list('follower', flat=True)
+        self.assertNotIn(
+            FollowViewsTest.author.pk,
+            followers_new,
+            'Не работает отписка от автора'
+        )
+
+    def new_author_post_for_follower(self):
+        FollowViewsTest.authorized_user_fol_client.get(
+            reverse(
+                'profile_follow',
+                args=[FollowViewsTest.author.username]
+            )
+        )
+        response_old = FollowViewsTest.authorized_user_fol_client.get(
+            reverse('follow_index')
+        )
+        old_posts = response_old.context.get(
+            'page'
+        ).object_list
+        self.assertEqual(
+            len(response_old.context.get('page').object_list),
+            1,
+            'Не загружается правильное колличество старых постов'
+        )
+        self.assertIn(
+            FollowViewsTest.post,
+            old_posts,
+            'Старый пост не верен'
+        )
+        new_post = Post.objects.create(
+            text='test_new_post',
+            group=FollowViewsTest.group,
+            author=FollowViewsTest.author
+        )
+        cache.clear()
+        response_new = FollowViewsTest.authorized_user_fol_client.get(
+            reverse('follow_index')
+        )
+        new_posts = response_new.context.get(
+            'page'
+        ).object_list
+        self.assertEqual(
+            len(response_new.context.get('page').object_list),
+            2,
+            'Нету нового поста'
+        )
+        self.assertIn(
+            new_post,
+            new_posts,
+            'Новый пост не верен'
+        )
+
+    def new_author_post_for_unfollower(self):
+        response_old = FollowViewsTest.authorized_user_unfol_client.get(
+            reverse('follow_index')
+        )
+        old_posts = response_old.context.get(
+            'page'
+        ).object_list
+        self.assertEqual(
+            len(response_old.context.get('page').object_list),
+            0,
+            'Не загружается правильное колличество старых постов'
+        )
+        self.assertNotIn(
+            FollowViewsTest.post,
+            old_posts,
+            'Старый пост не должен загружаться'
+        )
+        new_post = Post.objects.create(
+            text='test_new_post',
+            group=FollowViewsTest.group,
+            author=FollowViewsTest.author
+        )
+        cache.clear()
+        response_new = FollowViewsTest.authorized_user_fol_client.get(
+            reverse('follow_index')
+        )
+        new_posts = response_new.context.get(
+            'page'
+        ).object_list
+        self.assertEqual(
+            len(response_new.context.get('page').object_list),
+            0,
+            'Новый пост не должен появляться'
+        )
+        self.assertNotIn(
+            new_post,
+            new_posts,
+            'Новый пост не должен появляться'
+        )
+
+    def add_comment_for_guest(self):
+        response = FollowViewsTest.guest_client.get(
+            reverse(
+                'add_comment',
+                kwargs={
+                    'username': FollowViewsTest.author.username,
+                    'post_id': FollowViewsTest.post.pk
+                }
+            )
+        )
+        self.assertEqual(response.status_code, 302)
+
+
+class CommentViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.guest_client = Client()
+        cls.author = User.objects.create_user(
+            username='test_author'
+        )
+        cls.auth_author_client = Client()
+        cls.auth_author_client.force_login(cls.author)
+
+        cls.group = Group.objects.create(
+            title='test_group',
+            slug='test-slug',
+            description='test_description'
+        )
+
+        cls.post = Post.objects.create(
+            text='test_post',
+            group=cls.group,
+            author=cls.author
+        )
+
+    def add_comment_for_guest(self):
+        response = CommentViewsTest.guest_client.get(
+            reverse(
+                'add_comment',
+                kwargs={
+                    'username': CommentViewsTest.author.username,
+                    'post_id': CommentViewsTest.post.pk
+                }
+            )
+        )
+        self.assertEqual(
+            response.status_code,
+            302,
+            ('Неавторизированный пользователь'
+            ' не может оставлять комментарий')
+        )
+
+
+

@@ -1,14 +1,14 @@
 import shutil
 import tempfile
 
-from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
-from django.core.files.uploadedfile import SimpleUploadedFile
 
-from posts.models import Group, Post
 from posts.forms import PostForm
+from posts.models import Comment, Group, Post
 
 User = get_user_model()
 
@@ -21,6 +21,13 @@ class PostFormTests(TestCase):
         cls.author = User.objects.create_user(username='testuser')
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
+        cls.auth_user = User.objects.create_user(
+            username='test_auth_user'
+        )
+        cls.auth_user_client = Client()
+        cls.auth_user_client.force_login(
+            cls.auth_user
+        )
         cls.small_gif_old1 = (
             b'\x47\x49\x46\x38\x39\x61\x01\x00'
             b'\x01\x00\x00\x00\x00\x21\xf9\x04'
@@ -148,5 +155,51 @@ class PostFormTests(TestCase):
                 group=PostFormTests.group_old.id,
                 text='test_post',
                 image='posts/small_old1.gif'
+            ).exists()
+        )
+
+    def test_create_comment(self):
+        """Проверка формы создания нового комментария."""
+        comments_count = Comment.objects.filter(
+            post=PostFormTests.post.pk
+        ).count()
+        print(f'comments_count: {comments_count}')
+        form_data = {
+            'text': 'test_comment',
+        }
+
+        response = PostFormTests.auth_user_client.post(
+            reverse('add_comment',
+                    kwargs={
+                        'username': PostFormTests.author.username,
+                        'post_id': PostFormTests.post.pk
+                    }
+                    ),
+            data=form_data,
+            follow=True
+        )
+        comments = Post.objects.filter(
+            id=PostFormTests.post.pk
+        ).values_list('comments', flat=True)
+        print(f'comments_count: {comments_count}')
+        self.assertRedirects(
+            response,
+            reverse(
+                'post',
+                kwargs={
+                    'username': PostFormTests.author.username,
+                    'post_id': PostFormTests.post.pk
+                }
+            )
+        )
+        self.assertEqual(
+            comments.count(),
+            comments_count + 1
+        )
+        self.assertTrue(
+            Comment.objects.filter(
+                post=PostFormTests.post.pk,
+                author=PostFormTests.auth_user.pk,
+                text=form_data['text']
             ).exists()
         )

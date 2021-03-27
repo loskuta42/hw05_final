@@ -4,8 +4,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from yatube import settings
 
-from .forms import PostForm, CommentForm
-from .models import Group, Post, User, Comment
+from .forms import CommentForm, PostForm
+from .models import Follow, Group, Post, User
 
 
 def index(request):
@@ -54,6 +54,13 @@ def new_post(request):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
+    follow_count = author.follower.all().count()
+    followers_count = author.following.all().count()
+    following = request.user.is_authenticated and \
+                Follow.objects.filter(
+                    user=request.user,
+                    author=author
+                ).exists()
     author_posts = author.posts.all()
     count = author_posts.count()
     paginator = Paginator(author_posts, settings.PER_PAGE)
@@ -62,7 +69,14 @@ def profile(request, username):
     return render(
         request,
         'profile.html',
-        {'page': page, 'count': count, 'author': author}
+        {
+            'page': page,
+            'count': count,
+            'author': author,
+            'follow_count': follow_count,
+            'followers_count': followers_count,
+            'following': following
+        }
     )
 
 
@@ -85,13 +99,17 @@ def add_comment(request, post_id, username):
         'includes/comments.html',
         {
             'form': form,
-            'post': post
+            'post': post,
+
         }
     )
 
 
 def post_view(request, username, post_id):
     post = get_object_or_404(Post, id=post_id, author__username=username)
+    author = get_object_or_404(User, username=username)
+    follow_count = author.follower.all().count()
+    followers_count = author.following.all().count()
     form = CommentForm()
     author_posts = post.author.posts.all()
     count = author_posts.count()
@@ -104,7 +122,9 @@ def post_view(request, username, post_id):
             'post': post,
             'count': count,
             'comments': comments,
-            'form': form
+            'form': form,
+            'follow_count': follow_count,
+            'followers_count': followers_count,
         }
     )
 
@@ -142,6 +162,57 @@ def post_edit(request, username, post_id):
     )
 
 
+@login_required
+def follow_index(request):
+    posts = Post.objects.filter(author__following__user=request.user)
+    paginator = Paginator(posts, settings.PER_PAGE)
+    page_number = request.GET.get('page')
+    page = paginator.get_page(page_number)
+    return render(
+        request,
+        'follow.html',
+        {'page': page, 'paginator': paginator}
+    )
+
+
+@login_required
+def profile_follow(request, username):
+    author = get_object_or_404(User, username=username)
+    if author == request.user:
+        return redirect(
+            'profile',
+            username=username
+        )
+    follower = Follow.objects.filter(
+        user=request.user,
+        author=author
+    ).exists()
+    if follower is True:
+        return redirect(
+            'profile',
+            username=username
+        )
+    Follow.objects.create(user=request.user, author=author)
+    return redirect(
+        'profile',
+        username=username
+    )
+
+
+@login_required
+def profile_unfollow(request, username):
+    author = get_object_or_404(User, username=username)
+    if author == request.user:
+        return redirect(
+            'profile',
+            username=username
+        )
+    following = get_object_or_404(Follow, user=request.user, author=author)
+    following.delete()
+    return redirect(
+        'profile',
+        username=username
+    )
 
 
 def page_not_found(request, exception):
