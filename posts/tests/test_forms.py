@@ -160,6 +160,9 @@ class PostFormTests(TestCase):
 
     def test_create_comment(self):
         """Проверка формы создания нового комментария."""
+        author = PostFormTests.author
+        post = PostFormTests.post
+        client = PostFormTests.auth_user_client
         comments_count = Comment.objects.filter(
             post=PostFormTests.post.pk
         ).count()
@@ -168,18 +171,18 @@ class PostFormTests(TestCase):
             'text': 'test_comment',
         }
 
-        response = PostFormTests.auth_user_client.post(
+        response = client.post(
             reverse('add_comment',
                     kwargs={
-                        'username': PostFormTests.author.username,
-                        'post_id': PostFormTests.post.pk
+                        'username': author.username,
+                        'post_id': post.pk
                     }
                     ),
             data=form_data,
             follow=True
         )
         comments = Post.objects.filter(
-            id=PostFormTests.post.pk
+            id=post.pk
         ).values_list('comments', flat=True)
         print(f'comments_count: {comments_count}')
         self.assertRedirects(
@@ -187,8 +190,8 @@ class PostFormTests(TestCase):
             reverse(
                 'post',
                 kwargs={
-                    'username': PostFormTests.author.username,
-                    'post_id': PostFormTests.post.pk
+                    'username': author.username,
+                    'post_id': post.pk
                 }
             )
         )
@@ -198,7 +201,7 @@ class PostFormTests(TestCase):
         )
         self.assertTrue(
             Comment.objects.filter(
-                post=PostFormTests.post.pk,
+                post=post.pk,
                 author=PostFormTests.auth_user.pk,
                 text=form_data['text']
             ).exists()

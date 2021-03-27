@@ -6,8 +6,10 @@
         <div class="col-md-3 mb-3 mt-1">
             {% include 'includes/card_author.html' %}
         </div>
+        <div class="col-md-9">
         {% include "includes/post_item.html" with post=post %}
-        <div class="card mb-3 mt-1 shadow-sm">
+        </div>
+        <div class="col-md-9">
             {% include 'includes/comments.html' %}
         </div>
 

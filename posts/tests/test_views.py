@@ -384,44 +384,50 @@ class FollowViewsTest(TestCase):
 
     def test_follow_unfollow(self):
         """Тест работы подписки и отписки от автора."""
-        FollowViewsTest.authorized_user_unfol_client.get(
+        client = FollowViewsTest.authorized_user_unfol_client
+        user = FollowViewsTest.user_unfol
+        author = FollowViewsTest.author
+        client.get(
             reverse(
                 'profile_follow',
-                args=[FollowViewsTest.author.username]
+                args=[author.username]
             )
         )
-        followers_old = User.objects.filter(
-            username=FollowViewsTest.user_unfol.username
-        ).values_list('follower', flat=True)
-        self.assertIn(
-            FollowViewsTest.author.pk,
-            followers_old,
+        follower = Follow.objects.filter(
+            user=user,
+            author=author
+        ).exists()
+        self.assertTrue(
+            follower,
             'Не работает подписка на автора'
         )
-        FollowViewsTest.authorized_user_unfol_client.get(
+        client.get(
             reverse(
                 'profile_unfollow',
-                args=[FollowViewsTest.author.username]
+                args=[author.username]
             ),
 
         )
-        followers_new = User.objects.filter(
-            username=FollowViewsTest.user_unfol.username
-        ).values_list('follower', flat=True)
-        self.assertNotIn(
-            FollowViewsTest.author.pk,
-            followers_new,
+        follower = Follow.objects.filter(
+            user=user,
+            author=author
+        ).exists()
+        self.assertFalse(
+            follower,
             'Не работает отписка от автора'
         )
 
     def test_new_author_post_for_follower(self):
-        FollowViewsTest.authorized_user_fol_client.get(
+        client = FollowViewsTest.authorized_user_fol_client
+        author = FollowViewsTest.author
+        group = FollowViewsTest.group
+        client.get(
             reverse(
                 'profile_follow',
-                args=[FollowViewsTest.author.username]
+                args=[author.username]
             )
         )
-        response_old = FollowViewsTest.authorized_user_fol_client.get(
+        response_old = client.get(
             reverse('follow_index')
         )
         old_posts = response_old.context.get(
@@ -439,11 +445,11 @@ class FollowViewsTest(TestCase):
         )
         new_post = Post.objects.create(
             text='test_new_post',
-            group=FollowViewsTest.group,
-            author=FollowViewsTest.author
+            group=group,
+            author=author
         )
         cache.clear()
-        response_new = FollowViewsTest.authorized_user_fol_client.get(
+        response_new = client.get(
             reverse('follow_index')
         )
         new_posts = response_new.context.get(
@@ -461,7 +467,10 @@ class FollowViewsTest(TestCase):
         )
 
     def test_new_author_post_for_unfollower(self):
-        response_old = FollowViewsTest.authorized_user_unfol_client.get(
+        client = FollowViewsTest.authorized_user_unfol_client
+        author = FollowViewsTest.author
+        group = FollowViewsTest.group
+        response_old = client.get(
             reverse('follow_index')
         )
         old_posts = response_old.context.get(
@@ -479,11 +488,11 @@ class FollowViewsTest(TestCase):
         )
         new_post = Post.objects.create(
             text='test_new_post',
-            group=FollowViewsTest.group,
-            author=FollowViewsTest.author
+            group=group,
+            author=author
         )
         cache.clear()
-        response_new = FollowViewsTest.authorized_user_fol_client.get(
+        response_new = client.get(
             reverse('follow_index')
         )
         new_posts = response_new.context.get(
