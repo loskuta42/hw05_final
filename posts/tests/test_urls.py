@@ -33,6 +33,7 @@ class PostURLTests(TestCase):
         )
         cls.templates_url_names = {
             '/': 'index.html',
+            '/follow/': 'follow.html',
             f'/group/{cls.group.slug}/': 'group.html',
             '/new/': 'posts/new.html',
             (f'/{cls.author.username}/'
@@ -44,6 +45,14 @@ class PostURLTests(TestCase):
     def test_index(self):
         """Страница / доступна любому пользователю."""
         response = PostURLTests.guest_client.get('/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_follow(self):
+        """Страница follow доступна авторизированному
+         пользователю пользователю."""
+        response = PostURLTests.authorized_not_author_client.get(
+            '/follow/'
+        )
         self.assertEqual(response.status_code, 200)
 
     def test_profile(self):

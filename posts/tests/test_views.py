@@ -14,12 +14,12 @@ from posts.models import Follow, Group, Post
 User = get_user_model()
 
 
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(dir=settings.BASE_DIR))
 class PostPagesTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
         cls.guest_client = Client()
         cls.author = User.objects.create_user(
             username='test_author'
@@ -414,7 +414,7 @@ class FollowViewsTest(TestCase):
             'Не работает отписка от автора'
         )
 
-    def new_author_post_for_follower(self):
+    def test_new_author_post_for_follower(self):
         FollowViewsTest.authorized_user_fol_client.get(
             reverse(
                 'profile_follow',
@@ -460,7 +460,7 @@ class FollowViewsTest(TestCase):
             'Новый пост не верен'
         )
 
-    def new_author_post_for_unfollower(self):
+    def test_new_author_post_for_unfollower(self):
         response_old = FollowViewsTest.authorized_user_unfol_client.get(
             reverse('follow_index')
         )
@@ -500,18 +500,6 @@ class FollowViewsTest(TestCase):
             'Новый пост не должен появляться'
         )
 
-    def add_comment_for_guest(self):
-        response = FollowViewsTest.guest_client.get(
-            reverse(
-                'add_comment',
-                kwargs={
-                    'username': FollowViewsTest.author.username,
-                    'post_id': FollowViewsTest.post.pk
-                }
-            )
-        )
-        self.assertEqual(response.status_code, 302)
-
 
 class CommentViewsTest(TestCase):
     @classmethod
@@ -536,7 +524,7 @@ class CommentViewsTest(TestCase):
             author=cls.author
         )
 
-    def add_comment_for_guest(self):
+    def test_add_comment_for_guest(self):
         response = CommentViewsTest.guest_client.get(
             reverse(
                 'add_comment',
@@ -550,8 +538,5 @@ class CommentViewsTest(TestCase):
             response.status_code,
             302,
             ('Неавторизированный пользователь'
-            ' не может оставлять комментарий')
+             ' не может оставлять комментарий')
         )
-
-
-
