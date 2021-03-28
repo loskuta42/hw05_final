@@ -9,7 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Follow, Group, Post
+from posts.models import Follow, Group, Post, Comment
 
 User = get_user_model()
 
@@ -60,13 +60,13 @@ class PostPagesTest(TestCase):
                 'group',
                 args=[cls.group.slug]
             ): 'group.html',
-            reverse('new_post'): 'posts/new.html',
+            reverse('new_post'): 'new.html',
             reverse('post_edit',
                     kwargs={
                         'username': cls.author.username,
                         'post_id': cls.post.pk
                     }
-                    ): 'posts/new.html',
+                    ): 'new.html',
             reverse('profile',
                     args=[cls.author.username]
                     ): 'profile.html',
@@ -256,7 +256,7 @@ class PostPagesTest(TestCase):
         response_tech = response.context.get('tech')
         self.assertEqual(
             response_pycharm,
-            'Сайт написан при использовании Pycharm.'
+            'Сайт написан при использовании python и Django.'
         )
         self.assertEqual(
             response_tech,
@@ -521,6 +521,13 @@ class CommentViewsTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.guest_client = Client()
+
+        cls.auth_user = User.objects.create_user(
+            username='test_auth_user'
+        )
+        cls.auth_auth_user_client = Client()
+        cls.auth_auth_user_client.force_login(cls.auth_user)
+
         cls.author = User.objects.create_user(
             username='test_author'
         )
@@ -554,4 +561,67 @@ class CommentViewsTest(TestCase):
             302,
             ('Неавторизированный пользователь'
              ' не может оставлять комментарий')
+        )
+
+    def test_comment_for_auth_user(self):
+        """Авторизированный пользователь может оставить комментарий"""
+        client = CommentViewsTest.auth_auth_user_client
+        author = CommentViewsTest.author
+        post = CommentViewsTest.post
+        response = client.get(
+            reverse(
+                'add_comment',
+                kwargs={
+                    'username': author.username,
+                    'post_id': post.pk
+                }
+            )
+        )
+        self.assertEqual(
+            response.status_code,
+            200,
+            ('Авторизированный пользователь'
+             ' должен иметь возможность'
+             ' оставлять комментарий')
+        )
+        comments_count = Comment.objects.filter(
+            post=post.pk
+        ).count()
+        form_data = {
+            'text': 'test_comment',
+        }
+
+        response = client.post(
+            reverse('add_comment',
+                    kwargs={
+                        'username': author.username,
+                        'post_id': post.pk
+                    }
+                    ),
+            data=form_data,
+            follow=True
+        )
+        comments = Post.objects.filter(
+            id=post.pk
+        ).values_list('comments', flat=True)
+        self.assertRedirects(
+            response,
+            reverse(
+                'post',
+                kwargs={
+                    'username': author.username,
+                    'post_id': post.pk
+                }
+            )
+        )
+        self.assertEqual(
+            comments.count(),
+            comments_count + 1
+        )
+        self.assertTrue(
+            Comment.objects.filter(
+                post=post.pk,
+                author=CommentViewsTest.auth_user.pk,
+                text=form_data['text']
+            ).exists()
         )

@@ -43,7 +43,7 @@ def new_post(request):
         return redirect('index')
     return render(
         request,
-        'posts/new.html',
+        'new.html',
         {
             'form': form,
             'title': 'Новая запись',
@@ -107,9 +107,8 @@ def add_comment(request, post_id, username):
 
 def post_view(request, username, post_id):
     post = get_object_or_404(Post, id=post_id, author__username=username)
-    author = get_object_or_404(User, username=username)
-    follow_count = author.follower.all().count()
-    followers_count = author.following.all().count()
+    follow_count = post.author.follower.all().count()
+    followers_count = post.author.following.all().count()
     form = CommentForm()
     author_posts = post.author.posts.all()
     count = author_posts.count()
@@ -152,7 +151,7 @@ def post_edit(request, username, post_id):
         )
     return render(
         request,
-        'posts/new.html',
+        'new.html',
         {
             'form': form,
             'title': 'Редактировать запись',

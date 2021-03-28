@@ -35,9 +35,9 @@ class PostURLTests(TestCase):
             '/': 'index.html',
             '/follow/': 'follow.html',
             f'/group/{cls.group.slug}/': 'group.html',
-            '/new/': 'posts/new.html',
+            '/new/': 'new.html',
             (f'/{cls.author.username}/'
-             f'{cls.post.pk}/edit/'): 'posts/new.html',
+             f'{cls.post.pk}/edit/'): 'new.html',
             f'/{cls.author.username}/': 'profile.html',
             f'/{cls.author.username}/{cls.post.pk}/': 'post.html'
         }
