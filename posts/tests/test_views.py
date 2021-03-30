@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from http import HTTPStatus
 
 from django import forms
 from django.conf import settings
@@ -9,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Follow, Group, Post, Comment
+from posts.models import Comment, Follow, Group, Post
 
 User = get_user_model()
 
@@ -132,11 +133,8 @@ class PostPagesTest(TestCase):
         self.assertEqual(len(response.context.get('page').object_list), 1)
         self.assertEqual(correct_post, PostPagesTest.post)
 
-    def test_index_show_correct_context(self):
-        """Шаблон index сформирован с правильным контекстом."""
-        response = PostPagesTest.guest_client.get(reverse('index'))
+    def post_test(self, response_post):
         post = PostPagesTest.post
-        response_post = response.context.get('page').object_list[0]
         post_author = response_post.author
         post_group = response_post.group
         post_text = response_post.text
@@ -146,24 +144,22 @@ class PostPagesTest(TestCase):
         self.assertEqual(post_text, post.text)
         self.assertEqual(post_image, post.image)
 
+    def test_index_show_correct_context(self):
+        """Шаблон index сформирован с правильным контекстом."""
+        response = PostPagesTest.guest_client.get(reverse('index'))
+        response_post = response.context.get('page').object_list[0]
+        self.post_test(response_post)
+
     def test_index_show_correct_profile(self):
         """Шаблон profile сформирован с правильным контекстом."""
         response = PostPagesTest.guest_client.get(
             reverse('profile', args=[PostPagesTest.author.username])
         )
-        post = PostPagesTest.post
         author = PostPagesTest.author
         response_author = response.context.get('author')
         response_count = response.context.get('count')
         response_post = response.context.get('page').object_list[0]
-        post_author = response_post.author
-        post_group = response_post.group
-        post_text = response_post.text
-        post_image = response_post.image
-        self.assertEqual(post_author, author)
-        self.assertEqual(post_group, PostPagesTest.group)
-        self.assertEqual(post_text, post.text)
-        self.assertEqual(post_image, post.image)
+        self.post_test(response_post)
         self.assertEqual(author, response_author)
         self.assertEqual(1, response_count)
 
@@ -178,20 +174,11 @@ class PostPagesTest(TestCase):
                 }
             )
         )
-        post = PostPagesTest.post
         author = PostPagesTest.author
         response_post = response.context.get('post')
         response_author = response.context.get('author')
         response_count = response.context.get('count')
-        post_author = response_post.author
-        post_group = response_post.group
-        post_text = response_post.text
-        post_image = response_post.image
-        self.assertEqual(post_author, author)
-        self.assertEqual(post_group, PostPagesTest.group)
-        self.assertEqual(post_text, post.text)
-        self.assertEqual(post_image, post.image)
-        self.assertEqual(post, response_post)
+        self.post_test(response_post)
         self.assertEqual(author, response_author)
         self.assertEqual(1, response_count)
 
@@ -219,49 +206,8 @@ class PostPagesTest(TestCase):
         response = PostPagesTest.auth_author_client.get(
             reverse('group', args=[PostPagesTest.group.slug])
         )
-        post = PostPagesTest.post
         response_post = response.context.get('page').object_list[0]
-        post_author = response_post.author
-        post_group = response_post.group
-        post_text = response_post.text
-        post_image = response_post.image
-        self.assertEqual(post_author, PostPagesTest.author)
-        self.assertEqual(post_group, PostPagesTest.group)
-        self.assertEqual(post_text, post.text)
-        self.assertEqual(post_image, post.image)
-
-    def test_about_author_use_correct_view(self):
-        """Шаблон author использует корректный view."""
-        response = PostPagesTest.guest_client.get(
-            reverse('about:author')
-        )
-        response_author = response.context.get('author')
-        response_github = response.context.get('github')
-        self.assertEqual(
-            response_author,
-            'Автор проекта - Алексей Лобарев.'
-        )
-        self.assertEqual(
-            response_github,
-            '<a href="https://github.com/loskuta42/">'
-            'Ссылка на github</a>'
-        )
-
-    def test_about_tech_use_correct_view(self):
-        """Шаблон tech использует корректный view."""
-        response = PostPagesTest.guest_client.get(
-            reverse('about:tech')
-        )
-        response_pycharm = response.context.get('pycharm')
-        response_tech = response.context.get('tech')
-        self.assertEqual(
-            response_pycharm,
-            'Сайт написан при использовании python и Django.'
-        )
-        self.assertEqual(
-            response_tech,
-            'А так же модели, формы, декораторы и многое другое'
-        )
+        self.post_test(response_post)
 
 
 class PaginatorViewsTest(TestCase):
@@ -304,7 +250,7 @@ class PaginatorViewsTest(TestCase):
          на вторую страницую."""
         for i in PaginatorViewsTest.templates.keys():
             with self.subTest(i=i):
-                response = self.client.get(self.templates[i] + '?page=2')
+                response = self.client.get(self.templates[i], {'page': 2})
                 self.assertEqual(len(response.context.get(
                     'page'
                 ).object_list), 3)
@@ -388,8 +334,8 @@ class FollowViewsTest(TestCase):
             author=cls.author
         )
 
-    def test_follow_unfollow(self):
-        """Тест работы подписки и отписки от автора."""
+    def test_follow(self):
+        """Тест работы подписки на автора."""
         client = FollowViewsTest.authorized_user_unfol_client
         user = FollowViewsTest.user_unfol
         author = FollowViewsTest.author
@@ -407,6 +353,12 @@ class FollowViewsTest(TestCase):
             follower,
             'Не работает подписка на автора'
         )
+
+    def test_unfollow(self):
+        """Тест работы отписки от автора."""
+        client = FollowViewsTest.authorized_user_unfol_client
+        user = FollowViewsTest.user_unfol
+        author = FollowViewsTest.author
         client.get(
             reverse(
                 'profile_unfollow',
@@ -558,7 +510,7 @@ class CommentViewsTest(TestCase):
         )
         self.assertEqual(
             response.status_code,
-            302,
+            HTTPStatus.FOUND,
             ('Неавторизированный пользователь'
              ' не может оставлять комментарий')
         )
@@ -579,7 +531,7 @@ class CommentViewsTest(TestCase):
         )
         self.assertEqual(
             response.status_code,
-            200,
+            HTTPStatus.OK,
             ('Авторизированный пользователь'
              ' должен иметь возможность'
              ' оставлять комментарий')

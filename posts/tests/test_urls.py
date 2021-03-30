@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
@@ -45,7 +47,7 @@ class PostURLTests(TestCase):
     def test_index(self):
         """Страница / доступна любому пользователю."""
         response = PostURLTests.guest_client.get('/')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_follow(self):
         """Страница follow доступна авторизированному
@@ -53,21 +55,21 @@ class PostURLTests(TestCase):
         response = PostURLTests.authorized_not_author_client.get(
             '/follow/'
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_profile(self):
         """Страница /<username>/ доступна любому пользователю."""
         response = PostURLTests.guest_client.get(
             f'/{PostURLTests.author.username}/'
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_profile_post(self):
         """Страница /<username>/<post_id>/ доступна любому пользователю."""
         response = PostURLTests.guest_client.get(
             f'/{PostURLTests.author.username}/{PostURLTests.post.pk}/'
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_profile_post_edit_not_auth(self):
         """Страница /<username>/<post_id>/edit/ перенаправит анонимного
@@ -106,34 +108,19 @@ class PostURLTests(TestCase):
             (f'/{PostURLTests.author.username}/'
              f'{PostURLTests.post.pk}/edit/')
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_group_slug(self):
         """Страница /group/test-slug/ доступна любому пользователю."""
         response = PostURLTests.guest_client.get(
             f'/group/{PostURLTests.group.slug}/'
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_new(self):
         """Страница /new/ доступна авторизованному пользователю."""
         response = PostURLTests.authorized_author_client.get('/new/')
-        self.assertEqual(response.status_code, 200)
-
-    def test_about_author(self):
-        """Страница /about/author/ доступна любому пользователю."""
-        response = PostURLTests.guest_client.get('/about/author/')
-        self.assertEqual(response.status_code, 200)
-
-    def test_about_tech(self):
-        """Страница /about/author/ доступна любому пользователю."""
-        response = PostURLTests.guest_client.get('/about/tech/')
-        self.assertEqual(response.status_code, 200)
-
-    def test_404(self):
-        """При запросе несуществующей страницы сервер возвращает код 404."""
-        response = PostURLTests.guest_client.get('/about/тест/')
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
