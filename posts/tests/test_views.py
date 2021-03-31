@@ -18,95 +18,91 @@ User = get_user_model()
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp(dir=settings.BASE_DIR))
 class PostPagesTest(TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.guest_client = Client()
-        cls.author = User.objects.create_user(
+    def setUp(self):
+        self.guest_client = Client()
+        self.author = User.objects.create_user(
             username='test_author'
         )
-        cls.auth_author_client = Client()
-        cls.auth_author_client.force_login(cls.author)
-        cls.not_author = User.objects.create_user(
+        self.auth_author_client = Client()
+        self.auth_author_client.force_login(self.author)
+        self.not_author = User.objects.create_user(
             username='test_not_author'
         )
-        cls.authorized_not_author_client = Client()
-        cls.authorized_not_author_client.force_login(cls.not_author)
-        cls.small_gif = (
+        self.authorized_not_author_client = Client()
+        self.authorized_not_author_client.force_login(self.not_author)
+        self.small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x01\x00'
             b'\x01\x00\x00\x00\x00\x21\xf9\x04'
             b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
             b'\x00\x00\x01\x00\x01\x00\x00\x02'
             b'\x02\x4c\x01\x00\x3b'
         )
-        cls.uploaded = SimpleUploadedFile(
+        self.uploaded = SimpleUploadedFile(
             name='small.gif',
-            content=cls.small_gif,
+            content=self.small_gif,
             content_type='image/gif'
         )
-        cls.group = Group.objects.create(
+        self.group = Group.objects.create(
             title='test_group',
             slug='test-slug',
             description='test_description'
         )
-        cls.post = Post.objects.create(
+        self.post = Post.objects.create(
             text='test_post',
-            group=cls.group,
-            author=cls.author,
-            image=cls.uploaded
+            group=self.group,
+            author=self.author,
+            image=self.uploaded
         )
-        cls.templ_names = {
+        self.templ_names = {
             reverse('index'): 'index.html',
             reverse(
                 'group',
-                args=[cls.group.slug]
+                args=[self.group.slug]
             ): 'group.html',
             reverse('new_post'): 'new.html',
             reverse('post_edit',
                     kwargs={
-                        'username': cls.author.username,
-                        'post_id': cls.post.pk
+                        'username': self.author.username,
+                        'post_id': self.post.pk
                     }
                     ): 'new.html',
             reverse('profile',
-                    args=[cls.author.username]
+                    args=[self.author.username]
                     ): 'profile.html',
             reverse('post',
                     kwargs={
-                        'username': cls.author.username,
-                        'post_id': cls.post.pk
+                        'username': self.author.username,
+                        'post_id': self.post.pk
                     }
                     ): 'post.html',
         }
-        cls.form_fields = {
+        self.form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
             'image': forms.fields.ImageField
         }
 
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
+    def tearDown(self):
         shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
 
-        for reverse_name, template in PostPagesTest.templ_names.items():
+        for reverse_name, template in self.templ_names.items():
             with self.subTest(template=template):
-                response = PostPagesTest.auth_author_client.get(
+                response = self.auth_author_client.get(
                     reverse_name
                 )
                 self.assertTemplateUsed(response, template)
 
     def test_new_show_correct_context(self):
         """Шаблон new сформирован с правильным контекстом."""
-        response = PostPagesTest.auth_author_client.get(
+        response = self.auth_author_client.get(
             reverse('new_post')
         )
         response_title = response.context.get('title')
         response_button = response.context.get('button')
-        for value, expected in PostPagesTest.form_fields.items():
+        for value, expected in self.form_fields.items():
             with self.subTest(value=value):
                 form_field = response.context['form'].fields[value]
                 self.assertIsInstance(form_field, expected)
@@ -115,44 +111,44 @@ class PostPagesTest(TestCase):
 
     def test_index_page_list_is_1(self):
         """На страницу index передаётся ожидаемое количество объектов."""
-        response = PostPagesTest.auth_author_client.get(reverse('index'))
+        response = self.auth_author_client.get(reverse('index'))
         self.assertEqual(len(response.context.get(
             'page'
         ).object_list), 1)
 
     def test_group_page_list_is_1(self):
         """На страницу group передаётся ожидаемое количество объектов."""
-        response = PostPagesTest.auth_author_client.get(
-            reverse('group', args=[PostPagesTest.group.slug])
+        response = self.auth_author_client.get(
+            reverse('group', args=[self.group.slug])
         )
         correct_post = response.context.get(
             'page'
         ).object_list[0]
         self.assertEqual(len(response.context.get('page').object_list), 1)
-        self.assertEqual(correct_post, PostPagesTest.post)
+        self.assertEqual(correct_post, self.post)
 
     def post_test(self, response_post):
         post_author = response_post.author
         post_group = response_post.group
         post_text = response_post.text
         post_image = response_post.image
-        self.assertEqual(post_author, PostPagesTest.author)
-        self.assertEqual(post_group, PostPagesTest.group)
-        self.assertEqual(post_text, PostPagesTest.post.text)
-        self.assertEqual(post_image, PostPagesTest.post.image)
+        self.assertEqual(post_author, self.author)
+        self.assertEqual(post_group, self.group)
+        self.assertEqual(post_text, self.post.text)
+        self.assertEqual(post_image, self.post.image)
 
     def test_index_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
-        response = PostPagesTest.guest_client.get(reverse('index'))
+        response = self.guest_client.get(reverse('index'))
         response_post = response.context.get('page').object_list[0]
         self.post_test(response_post)
 
     def test_index_show_correct_profile(self):
         """Шаблон profile сформирован с правильным контекстом."""
-        response = PostPagesTest.guest_client.get(
-            reverse('profile', args=[PostPagesTest.author.username])
+        response = self.guest_client.get(
+            reverse('profile', args=[self.author.username])
         )
-        author = PostPagesTest.author
+        author = self.author
         response_author = response.context.get('author')
         response_count = response.context.get('count')
         response_post = response.context.get('page').object_list[0]
@@ -162,16 +158,16 @@ class PostPagesTest(TestCase):
 
     def test_index_show_correct_post_view(self):
         """Шаблон post сформирован с правильным контекстом."""
-        response = PostPagesTest.guest_client.get(
+        response = self.guest_client.get(
             reverse(
                 'post',
                 kwargs={
-                    'username': PostPagesTest.author.username,
-                    'post_id': PostPagesTest.post.pk
+                    'username': self.author.username,
+                    'post_id': self.post.pk
                 }
             )
         )
-        author = PostPagesTest.author
+        author = self.author
         response_post = response.context.get('post')
         response_author = response.context.get('author')
         response_count = response.context.get('count')
@@ -181,18 +177,18 @@ class PostPagesTest(TestCase):
 
     def test_post_edit_show_correct_context(self):
         """Шаблон post_edit сформирован с правильным контекстом."""
-        response = PostPagesTest.auth_author_client.get(
+        response = self.auth_author_client.get(
             reverse(
                 'post_edit',
                 kwargs={
-                    'username': PostPagesTest.author.username,
-                    'post_id': PostPagesTest.post.pk
+                    'username': self.author.username,
+                    'post_id': self.post.pk
                 }
             )
         )
         response_title = response.context.get('title')
         response_button = response.context.get('button')
-        for value, expected in PostPagesTest.form_fields.items():
+        for value, expected in self.form_fields.items():
             with self.subTest(value=value):
                 form_field = response.context['form'].fields[value]
                 self.assertIsInstance(form_field, expected)
@@ -201,8 +197,8 @@ class PostPagesTest(TestCase):
 
     def test_group_slug_show_correct_context(self):
         """Шаблон group сформирован с правильным контекстом."""
-        response = PostPagesTest.auth_author_client.get(
-            reverse('group', args=[PostPagesTest.group.slug])
+        response = self.auth_author_client.get(
+            reverse('group', args=[self.group.slug])
         )
         response_post = response.context.get('page').object_list[0]
         self.post_test(response_post)
