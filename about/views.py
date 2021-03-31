@@ -2,7 +2,7 @@ from django.views.generic.base import TemplateView
 
 
 class AboutAuthorView(TemplateView):
-    template_name = 'about/author.html'
+    template_name = 'author.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -15,7 +15,7 @@ class AboutAuthorView(TemplateView):
 
 
 class AboutTechView(TemplateView):
-    template_name = 'about/tech.html'
+    template_name = 'tech.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

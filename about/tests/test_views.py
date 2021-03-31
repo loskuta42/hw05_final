@@ -17,8 +17,8 @@ class AboutViewsTest(TestCase):
         cls.auth_user_client.force_login(cls.auth_user)
 
         cls.templ_names = {
-            reverse('about:author'): 'about/author.html',
-            reverse('about:tech'): 'about/tech.html'
+            reverse('about:author'): 'author.html',
+            reverse('about:tech'): 'tech.html'
         }
 
     def test_about_pages_uses_correct_template(self):

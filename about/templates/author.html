@@ -1,18 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Об технологиях проекта{% endblock %}
+{% block title %}Об авторе проекта{% endblock %}
 {% block content %}
 {% load user_filters %}
 {% load static %}
   <main role="main" class="container">
     <div class="row">
-      <!-- Левый вспомогательный блок -->
       <div class="col-md-3 mb-3 mt-1">
         <div class="card">
           <div class="card-body">
             <ul class="list-group list-group-flush">
               <li class="list-group-item">
                 <div class="h3">
-                  Об технологиях
+                  Об авторе
                 </div> 
               </li>
               <li class="list-group-item">
@@ -24,14 +23,13 @@
           </div>                    
         </div>                
       </div>
-      <!-- Тело страницы -->
       <div class="col-md-9">
         <div class="card-body">                    
           <div class="card-text">
-            <p>{{ pycharm }}</p>
-            <p>{{ tech }}</p>
-            <p>И тот, без кого это все было невозможно</p>
-            <img src="{% static "images/laptop.jpg" %}" width="260" height="255">
+            <p>{{ author }}</p>
+            <p>{{ github|safe }}</p>
+            <p>Святой Грааль</p>
+              <img src="{% static "images/cup.jpg" %}" >
           </div>                    
         </div>                
       </div>            

@@ -77,8 +77,6 @@ class PostPagesTest(TestCase):
                         'post_id': cls.post.pk
                     }
                     ): 'post.html',
-            reverse('about:author'): 'about/author.html',
-            reverse('about:tech'): 'about/tech.html'
         }
         cls.form_fields = {
             'text': forms.fields.CharField,
@@ -134,15 +132,14 @@ class PostPagesTest(TestCase):
         self.assertEqual(correct_post, PostPagesTest.post)
 
     def post_test(self, response_post):
-        post = PostPagesTest.post
         post_author = response_post.author
         post_group = response_post.group
         post_text = response_post.text
         post_image = response_post.image
         self.assertEqual(post_author, PostPagesTest.author)
         self.assertEqual(post_group, PostPagesTest.group)
-        self.assertEqual(post_text, post.text)
-        self.assertEqual(post_image, post.image)
+        self.assertEqual(post_text, PostPagesTest.post.text)
+        self.assertEqual(post_image, PostPagesTest.post.image)
 
     def test_index_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
@@ -185,12 +182,13 @@ class PostPagesTest(TestCase):
     def test_post_edit_show_correct_context(self):
         """Шаблон post_edit сформирован с правильным контекстом."""
         response = PostPagesTest.auth_author_client.get(
-            reverse('post_edit',
-                    kwargs={
-                        'username': PostPagesTest.author.username,
-                        'post_id': PostPagesTest.post.pk
-                    }
-                    )
+            reverse(
+                'post_edit',
+                kwargs={
+                    'username': PostPagesTest.author.username,
+                    'post_id': PostPagesTest.post.pk
+                }
+            )
         )
         response_title = response.context.get('title')
         response_button = response.context.get('button')
